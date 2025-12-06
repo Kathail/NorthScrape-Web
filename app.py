@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
-import requests
 from bs4 import BeautifulSoup
+import requests
 import re
 import time
 import random
@@ -32,7 +32,7 @@ NORTHERN_LOCATIONS = sorted([
     "Sturgeon Falls, ON", "Manitouwadge, ON", "Gogama, ON", "Foleyet, ON", "Britt, ON",
 ])
 
-# --- UTILITIES (Ported from Original) ---
+# --- UTILITIES ---
 
 def get_headers():
     return {"User-Agent": random.choice(USER_AGENTS)}
@@ -130,22 +130,22 @@ class ScraperEngine:
             return results
         except: return []
 
-# --- FLASK ROUTES ---
+# --- FLASK ROUTES (The Fix is Here) ---
 
-@app.route('/northscrape')
-def index():
+# 1. NEW ROOT ROUTE: Handles the base URL (e.g., your-site.onrender.com/ or kathail.ca/northscrape/)
+@app.route('/')
+def index_root():
     return render_template('index.html', categories=CATEGORIES, locations=NORTHERN_LOCATIONS)
 
-@app.route('/northscrape/dashboard')
+# 2. DASHBOARD ROUTE: Clean path for the dashboard
+@app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/northscrape/api/scrape', methods=['POST'])
+# 3. API ROUTE: Clean path for the AJAX scraper endpoint
+@app.route('/api/scrape', methods=['POST'])
 def scrape_api():
-    """
-    Handles Generation + Enrichment in one go.
-    Receives JSON: { "categories": [], "locations": [] }
-    """
+    """ Handles Generation + Enrichment in one go. """
     data = request.json
     cats = data.get('categories', [])
     locs = data.get('locations', [])
@@ -154,7 +154,6 @@ def scrape_api():
     raw_leads = []
     seen = set()
     
-    # Use ThreadPool for initial generation
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = []
         for c in cats:
@@ -196,5 +195,12 @@ def scrape_api():
 
     return jsonify(final_data)
 
+# 4. REMOVE CPanel Legacy Routes (Optional)
+# If you are using Render, these prefixed routes are no longer necessary:
+# @app.route('/northscrape')
+# @app.route('/northscrape/dashboard')
+# @app.route('/northscrape/api/scrape')
+
+# 5. KEEP DEVELOPMENT SERVER BLOCK (Ignored by Gunicorn)
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
